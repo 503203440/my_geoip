@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP查询工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin: 40px 0;
+            color: white;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .search-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .result-card {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .info-item {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .info-item h3 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #475569;
+        }
+
+        .info-item p {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .sub-info {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .sub-info p {
+            font-size: 0.9rem;
+            font-weight: normal;
+            color: #64748b;
+        }
+
+        .country-flag {
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .coordinates {
+            font-family: monospace;
+        }
+
+        .json-output {
+            background: #1e293b;
+            color: #f1f5f9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #dc2626;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .search-form {
+                flex-direction: column;
+            }
+
+            .form-group {
+                width: 100%;
+                min-width: auto;
+            }
+
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>IP地址查询工具</h1>
+            <p>输入IP地址，查询详细信息</p>
+        </header>
+
+        <section class="search-section">
+            <form class="search-form">
+                <div class="form-group">
+                    <input type="text" id="ipInput" placeholder="输入IP地址，例如：124.77.252.197" value="">
+                </div>
+                <button type="submit" id="searchBtn">查询</button>
+            </form>
+        </section>
+
+        <section class="results-section">
+            <div class="loading active" id="loading">
+                <h2>正在查询...</h2>
+            </div>
+
+            <div class="error" id="error" style="display: none;"></div>
+
+            <div id="results" style="display: none;"></div>
+        </section>
+    </div>
+
+    <script>
+        const form = document.querySelector('.search-form');
+        const ipInput = document.getElementById('ipInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const results = document.getElementById('results');
+
+        // 默认查询示例IP
+        window.onload = () => {
+            fetchIpInfo();
+        };
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const ip = ipInput.value.trim();
+            if (ip) {
+                fetchIpInfo(ip);
+            }
+        });
+
+        async function fetchIpInfo(ip) {
+            loading.classList.add('active');
+            error.style.display = 'none';
+            results.style.display = 'none';
+
+            try {
+                const response = await fetch(`/ip?ip=${encodeURIComponent(ip)}`);
+                if (!response.ok) {
+                    let body = await response.text()
+                    throw new Error(`HTTP错误！状态：${response.status}，body:${body}`);
+                }
+                const data = await response.json();
+                displayResults(data);
+            } catch (err) {
+                error.textContent = `查询失败：${err.message}`;
+                error.style.display = 'block';
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        function displayResults(data) {
+            // 构建HTML结果
+            const html = `
+                <div class="result-card">
+                    <h2>IP信息查询结果</h2>
+                    <div class="result-grid">
+                        <!-- ASN信息 -->
+                        <div class="info-item">
+                            <h3>自治系统编号</h3>
+                            <p>${data.asn?.autonomousSystemNumber || '未知'}</p>
+                        </div>
+                        <div class="info-item">
+                            <h3>自治系统组织</h3>
+                            <p>${data.asn?.autonomousSystemOrganization || '未知'}</p>
+                        </div>
+                        <div class="info-item">
+                            <h3>IP地址</h3>
+                            <p>${data.asn?.ipAddress || '未知'}</p>
+                        </div>
+                        <div class="info-item">
+                            <h3>网络范围</h3>
+                            <p>${data.asn?.network || '未知'}</p>
+                        </div>
+
+                        <!-- 城市信息 -->
+                        <div class="info-item">
+                            <h3>国家</h3>
+                            <p>
+                                <span class="country-flag">${getCountryFlag(data.cityInfo?.country?.isoCode)}</span>
+                                ${data.cityInfo?.country?.isoCode || '未知'} - ${data.cityInfo?.country?.names?.['zh-CN'] || data.cityInfo?.country?.names?.en || '未知'}
+                            </p>
+                        </div>
+                        <div class="info-item">
+                            <h3>省份/州</h3>
+                            <p>${data.cityInfo?.subdivisions?.[0]?.names?.['zh-CN'] || data.cityInfo?.subdivisions?.[0]?.names?.en || '未知'}</p>
+                        </div>
+                        <div class="info-item">
+                            <h3>城市</h3>
+                            <p>${data.cityInfo?.city?.names?.['zh-CN'] || data.cityInfo?.city?.names?.en || '未知'}</p>
+                        </div>
+                        <div class="info-item">
+                            <h3>经纬度</h3>
+                            <p class="coordinates">
+                                ${data.cityInfo?.location?.latitude?.toFixed(4) || '0.0000'}, 
+                                ${data.cityInfo?.location?.longitude?.toFixed(4) || '0.0000'}
+                            </p>
+                        </div>
+                        <div class="info-item">
+                            <h3>时区</h3>
+                            <p>${data.cityInfo?.location?.timeZone || '未知'}</p>
+                        </div>
+                        <div class="info-item">
+                            <h3>大陆</h3>
+                            <p>${data.cityInfo?.continent?.names?.['zh-CN'] || data.cityInfo?.continent?.names?.en || '未知'}</p>
+                        </div>
+                    </div>
+
+                    <!-- 原始JSON数据 -->
+                    <div class="json-output">
+                        <h3 style="color: #60a5fa; margin-bottom: 10px;">原始数据</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                </div>
+            `;
+
+            results.innerHTML = html;
+            results.style.display = 'block';
+        }
+
+        // 获取国家旗帜（使用emoji）
+        function getCountryFlag(code) {
+            const flagMap = {
+                'CN': '🇨🇳',
+                'US': '🇺🇸',
+                'JP': '🇯🇵',
+                'KR': '🇰🇷',
+                'SG': '🇸🇬',
+                'UK': '🇬🇧',
+                'FR': '🇫🇷',
+                'DE': '🇩🇪'
+                // 可以添加更多国家
+            };
+            return flagMap[code] || '';
+        }
+    </script>
+</body>
+</html>

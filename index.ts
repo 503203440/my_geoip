@@ -13,9 +13,22 @@ const server = Bun.serve({
                 url: req.url,
                 method: req.method
             }, null, 2))
+        },
+        "/": () => {
+            return new Response(Bun.file('./public/index.html'));
         }
     },
     fetch: (req) => {
+        const url = new URL(req.url);
+        if (url.pathname.startsWith('/static/')) {
+            const filePath = '.' + url.pathname;
+            try {
+                const file = Bun.file(filePath);
+                return new Response(file);
+            } catch (e) {
+                return new Response('File not found', { status: 404 });
+            }
+        }
         return new Response("404 Not Found", {
             status: 404,
         })

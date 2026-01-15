@@ -28,7 +28,7 @@ const CITY_Reader = Reader.openBuffer(CITY_DB_Buffer);
 function handleIP(req) {
     const url = new URL(req.url);
     let ipaddr = url.searchParams.get('ip');
-    console.log(`参数信息:${url.searchParams.entries()}`)
+    console.log(`参数信息:${Array.from(url.searchParams.entries())}`)
     if (!ipaddr) {
         let requestIP = this.requestIP(req)
         if (requestIP) {
@@ -40,13 +40,25 @@ function handleIP(req) {
         }
     }
     console.log(`IP地址:`, ipaddr);
-    const ASNResponse = ASN_Reader.asn(ipaddr);
-    const CITYResponse = CITY_Reader.city(ipaddr);
+    try {
+        const ASNResponse = ASN_Reader.asn(ipaddr);
+        const CITYResponse = CITY_Reader.city(ipaddr);
 
-    return Response.json({
-        asn: ASNResponse,
-        cityInfo: CITYResponse
-    })
+        return Response.json({
+            asn: ASNResponse,
+            cityInfo: CITYResponse
+        })
+    } catch (err) {
+        return new Response(JSON.stringify({
+            "error": err.message,
+            "ip": ipaddr
+        }), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+    }
 }
 
 export {
