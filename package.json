@@ -1,0 +1,15 @@
+{
+  "name": "my_geoip",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@maxmind/geoip2-node": "^6.3.4"
+  }
+}
