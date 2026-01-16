@@ -5,18 +5,18 @@ import { handleIP } from "./handlers.js";
 const server = Bun.serve({
     port: 3000,
     routes: {
-        "/ip": handleIP,
-        "/debug": async req => {
+        "/geoip": () => {
+            return new Response(Bun.file('./public/index.html'));
+        },
+        "/geoip/ip": handleIP,
+        "/geoip/debug": async req => {
             return new Response(JSON.stringify({
                 headers: Object.fromEntries(req.headers.entries()),
-                params: new URLSearchParams(req.url).entries(),
+                params: new URL(req.url).searchParams,
                 url: req.url,
                 method: req.method
             }, null, 2))
         },
-        "/": () => {
-            return new Response(Bun.file('./public/index.html'));
-        }
     },
     fetch: (req) => {
         const url = new URL(req.url);

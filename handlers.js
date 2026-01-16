@@ -10,10 +10,16 @@ import fs from 'fs';
 // Synchronous database opening
 // const fs = require('fs');
 // const Reader = require('@maxmind/geoip2-node').Reader;
-
-
-const ASN_DB_Buffer = fs.readFileSync(process.env.ASN_DB_PATH);
-const CITY_DB_Buffer = fs.readFileSync(process.env.CITY_DB_PATH);
+const asn_db_file = Bun.file(process.env.ASN_DB_PATH.trim());
+const city_db_file = Bun.file(process.env.CITY_DB_PATH.trim());
+const asnDBExists = await asn_db_file.exists();
+const cityDBExists = await city_db_file.exists();
+if (!asnDBExists || !cityDBExists) {
+    console.error(`Bun 确认文件不存在:asnDB:${process.env.ASN_DB_PATH.trim()}, cityDB:${process.env.CITY_DB_PATH.trim()}`);
+    process.exit(1)
+}
+const ASN_DB_Buffer = Buffer.from(await asn_db_file.arrayBuffer());
+const CITY_DB_Buffer = Buffer.from(await city_db_file.arrayBuffer())
 // This reader object should be reused across lookups as creation of it is
 // expensive.
 const ASN_Reader = Reader.openBuffer(ASN_DB_Buffer);
@@ -30,13 +36,17 @@ function handleIP(req) {
     let ipaddr = url.searchParams.get('ip');
     console.log(`参数信息:${Array.from(url.searchParams.entries())}`)
     if (!ipaddr) {
-        let requestIP = this.requestIP(req)
-        if (requestIP) {
-            ipaddr = requestIP.address;
-        } else {
-            return new Response("获取IP地址失败", {
-                status: 400,
-            })
+        // 尝试获取x-real-ip
+        ipaddr = req.headers.get('x-real-ip')
+        if(!ipaddr){
+            let requestIP = this.requestIP(req)
+            if (requestIP) {
+                ipaddr = requestIP.address;
+            } else {
+                return new Response("获取IP地址失败", {
+                    status: 400,
+                })
+            }
         }
     }
     console.log(`IP地址:`, ipaddr);
