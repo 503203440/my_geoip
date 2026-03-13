@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IP查询工具</title>
+    <title>IP 查询工具</title>
     <style>
         * {
             margin: 0;
@@ -43,6 +43,18 @@
             padding: 30px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             margin-bottom: 30px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-header h2 {
+            font-size: 1.2rem;
+            color: #667eea;
         }
 
         .search-form {
@@ -91,6 +103,23 @@
 
         button:active {
             transform: translateY(0);
+        }
+
+        button.update-btn {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            min-width: auto;
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+
+        button.update-btn:hover {
+            box-shadow: 0 4px 15px rgba(17, 153, 142, 0.4);
+        }
+
+        button.update-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .results-section {
@@ -150,18 +179,6 @@
             color: #1e293b;
         }
 
-        .sub-info {
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #e2e8f0;
-        }
-
-        .sub-info p {
-            font-size: 0.9rem;
-            font-weight: normal;
-            color: #64748b;
-        }
-
         .country-flag {
             display: inline-block;
             margin-right: 8px;
@@ -191,6 +208,15 @@
             border-left: 4px solid #dc2626;
         }
 
+        .success {
+            background: #d1fae5;
+            color: #059669;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #10b981;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -212,6 +238,16 @@
             .result-grid {
                 grid-template-columns: 1fr;
             }
+
+            .section-header {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+
+            .section-header h2 {
+                margin-bottom: 0;
+            }
         }
     </style>
 </head>
@@ -219,14 +255,20 @@
 <body>
     <div class="container">
         <header>
-            <h1>IP地址查询工具</h1>
-            <p>输入IP地址，查询详细信息</p>
+            <h1>IP 地址查询工具</h1>
+            <p>输入 IP 地址，查询详细的地理位置和 ASN 信息</p>
         </header>
 
         <section class="search-section">
+            <div class="section-header">
+                <h2>🔍 IP 查询</h2>
+                <button onclick="updateDatabase()" id="updateBtn" class="update-btn">
+                    🔄 更新数据库
+                </button>
+            </div>
             <form class="search-form">
                 <div class="form-group">
-                    <input type="text" id="ipInput" placeholder="输入IP地址查询" value="">
+                    <input type="text" id="ipInput" placeholder="输入 IP 地址查询，或不输入查询本机 IP" value="">
                 </div>
                 <button type="submit" id="searchBtn">查询</button>
             </form>
@@ -238,6 +280,7 @@
             </div>
 
             <div class="error" id="error" style="display: none;"></div>
+            <div class="success" id="success" style="display: none;"></div>
 
             <div id="results" style="display: none;"></div>
         </section>
@@ -249,11 +292,13 @@
         const searchBtn = document.getElementById('searchBtn');
         const loading = document.getElementById('loading');
         const error = document.getElementById('error');
+        const success = document.getElementById('success');
         const results = document.getElementById('results');
+        const updateBtn = document.getElementById('updateBtn');
 
-        // 默认查询示例IP
+        // 默认查询示例 IP
         window.onload = () => {
-            fetchIpInfo();
+            fetchIpInfo('124.77.252.197');
         };
 
         form.addEventListener('submit', (e) => {
@@ -267,13 +312,14 @@
         async function fetchIpInfo(ip) {
             loading.classList.add('active');
             error.style.display = 'none';
+            success.style.display = 'none';
             results.style.display = 'none';
 
             try {
                 const response = await fetch(`/geoip/ip?ip=${ip ? encodeURIComponent(ip) : ''}`);
                 if (!response.ok) {
                     let body = await response.text()
-                    throw new Error(`HTTP错误！状态：${response.status}，body:${body}`);
+                    throw new Error(`HTTP 错误！状态：${response.status}，body:${body}`);
                 }
                 const data = await response.json();
                 displayResults(data);
@@ -285,13 +331,44 @@
             }
         }
 
+        async function updateDatabase() {
+            updateBtn.disabled = true;
+            updateBtn.textContent = '🔄 更新中...';
+            error.style.display = 'none';
+            success.style.display = 'none';
+
+            try {
+                const response = await fetch('/geoip/update', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    success.textContent = `✅ ${data.message}`;
+                    success.style.display = 'block';
+
+                    // 显示更新结果
+                    if (data.results) {
+                        const details = data.results.map(r =>
+                            `  ${r.success ? '✓' : '✗'} ${r.edition}${r.error ? ': ' + r.error : ''}`
+                        ).join('\n');
+                        success.textContent += '\n' + details;
+                    }
+                } else {
+                    throw new Error(data.error || '更新失败');
+                }
+            } catch (err) {
+                error.textContent = `更新失败：${err.message}`;
+                error.style.display = 'block';
+            } finally {
+                updateBtn.disabled = false;
+                updateBtn.textContent = '🔄 更新数据库';
+            }
+        }
+
         function displayResults(data) {
-            // 构建HTML结果
             const html = `
                 <div class="result-card">
-                    <h2>IP信息查询结果</h2>
+                    <h2>IP 信息查询结果</h2>
                     <div class="result-grid">
-                        <!-- ASN信息 -->
                         <div class="info-item">
                             <h3>自治系统编号</h3>
                             <p>${data.asn?.autonomousSystemNumber || '未知'}</p>
@@ -301,7 +378,7 @@
                             <p>${data.asn?.autonomousSystemOrganization || '未知'}</p>
                         </div>
                         <div class="info-item">
-                            <h3>IP地址</h3>
+                            <h3>IP 地址</h3>
                             <p>${data.asn?.ipAddress || '未知'}</p>
                         </div>
                         <div class="info-item">
@@ -309,7 +386,6 @@
                             <p>${data.asn?.network || '未知'}</p>
                         </div>
 
-                        <!-- 城市信息 -->
                         <div class="info-item">
                             <h3>国家</h3>
                             <p>
@@ -342,7 +418,6 @@
                         </div>
                     </div>
 
-                    <!-- 原始JSON数据 -->
                     <div class="json-output">
                         <h3 style="color: #60a5fa; margin-bottom: 10px;">原始数据</h3>
                         <pre>${JSON.stringify(data, null, 2)}</pre>
@@ -354,7 +429,6 @@
             results.style.display = 'block';
         }
 
-        // 获取国家旗帜（使用emoji）
         function getCountryFlag(code) {
             const flagMap = {
                 'CN': '🇨🇳',
@@ -365,7 +439,6 @@
                 'UK': '🇬🇧',
                 'FR': '🇫🇷',
                 'DE': '🇩🇪'
-                // 可以添加更多国家
             };
             return flagMap[code] || '';
         }

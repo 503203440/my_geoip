@@ -1,1 +1,0 @@
-建议将下载好的GeoLite2-ASN.mmdb和GeoLite2-ASN.mmdb放在这个目录供程序读取
